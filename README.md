@@ -15,3 +15,7 @@
 # Where can we see the changelogs?
 
   I will be maintaining the changelogs at [CHANGELOGS.md](./CHANGELOGS.md)
+
+# License?
+
+  Its licensed under MIT license. Do whatever you want with it!
