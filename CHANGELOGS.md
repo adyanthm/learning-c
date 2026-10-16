@@ -21,3 +21,7 @@ The old calculator I made earlier didn't care about operator precedence or paren
 This one is different!
 
 It correctly handles operator precedence and supports parentheses. I've also tried my best to make the code easy to understand with comments explaining how the parser works.
+
+## [b1bed22] - Local Idea Vault:
+
+Basically, a fancy colourful todo application. Since the readme is a bit too long and I wanted to include a lot of other stuff, I have created a separate [readme](./myvault/README.md) for this.
