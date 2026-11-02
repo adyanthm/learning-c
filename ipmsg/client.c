@@ -1,4 +1,9 @@
-#define MAX_MSG (100 * 1024)
+// Since ezsocks.c and ezthreads.c already include implementation, we do not need to link
+// Just run: `gcc client.c -o client.exe -lws2_32`
+
+#define MAX_MSG (100 * 1024) // Do this before including ezsocks if you want to override the default.
+#define EZSOCKS_IMPLEMENTATION
+#define EZTHREADS_IMPLEMENTATION
 #include "ezsocks.h"
 #include "ezthreads.h"
 #include <stdio.h>

@@ -1,6 +1,8 @@
 #include "ezsocks.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
+#include <winsock2.h>
 
 int sock_init(void){
     WSADATA wsa;
@@ -21,9 +23,13 @@ SOCKET start_server_adv(const char *ip, unsigned short port, int family, int typ
     if (server == INVALID_SOCKET)
         return INVALID_SOCKET;
 
-    /* like Python's SO_REUSEADDR: restart the server without "address in use" */
+    /*
+     * We do not want to do SO_REUSEADDR on windows like in linux because it can allow other processes
+     * to steal our ports. This can lead to SEVERE Man-In-The-Middle attack vulnerabilities.
+     * Hence we use `SO_EXCLUSIVEADDRUSE` instead.
+     */
     BOOL yes = TRUE;
-    setsockopt(server, SOL_SOCKET, SO_REUSEADDR, (const char *)&yes, sizeof(yes));
+    setsockopt(server, SOL_SOCKET, SO_EXCLUSIVEADDRUSE, (const char *)&yes, sizeof(yes));
 
     if (family == AF_INET){
         struct sockaddr_in addr = {0};
@@ -106,7 +112,17 @@ int sendall(SOCKET sock, const char *buf, int len){
     int total = 0;
     while (total < len){
         int n = send(sock, buf + total, len - total, 0);
-        if (n == SOCKET_ERROR || n == 0) return SOCKET_ERROR;
+        if (n <= 0) return n; // n = 0 means connection closed. n = -1 means socketerror.
+        total += n;
+    }
+    return total;
+}
+
+int recvall(SOCKET sock, char *buf, int len){
+    int total = 0;
+    while (total < len){
+        int n = recv(sock, buf + total, len - total, 0);
+        if (n <= 0) return n; // n = 0 means connection closed. n = -1 means socketerror.
         total += n;
     }
     return total;
@@ -121,4 +137,31 @@ int recv_str(SOCKET sock, char *buf, int size){
     int n = recv(sock, buf, size - 1, 0);
     if (n >= 0) buf[n] = '\0';
     return n;
+}
+
+int send_msg(SOCKET s, const char *msg){
+    size_t n = strlen(msg);
+    if (n == 0 || n > MAX_MSG) return SOCKET_ERROR;
+
+    uint32_t len = htonl((uint32_t)n);
+    if (sendall(s, (const char *)&len, 4) != 4)
+        return SOCKET_ERROR;
+
+    return sendall(s, msg, (int)n);
+}
+
+int recv_msg(SOCKET s, char *buf, int size){
+    uint32_t len;
+    int r = recvall(s, (char *)&len, 4);
+    if (r < 4) return r;
+
+    len = ntohl(len);
+    if (size <= 0 || len == 0 || len > MAX_MSG || len >= (uint32_t)size)
+        return SOCKET_ERROR;
+
+    if (recvall(s, buf, (int)len) != (int)len)
+        return SOCKET_ERROR; // failed
+
+    buf[len] = '\0';
+    return (int)len;
 }

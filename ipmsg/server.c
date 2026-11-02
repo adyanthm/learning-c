@@ -1,9 +1,14 @@
-#define MAX_MSG (100 * 1024)
+// Since ezsocks.c and ezthreads.c already include implementation, we do not need to link
+// Just run: `gcc server.c -o server.exe -lws2_32`
+
+#define MAX_MSG (100 * 1024) // Do this before including ezsocks if you want to override the default.
+#define EZSOCKS_IMPLEMENTATION
+#define EZTHREADS_IMPLEMENTATION
 #include "ezsocks.h"
 #include "ezthreads.h"
 #include <stdio.h>
-#include <winsock2.h>
 #define PORT 8080
+
 
 static void receiver(void *arg){
     SOCKET s = (SOCKET)(UINT_PTR)arg;
