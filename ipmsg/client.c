@@ -1,6 +1,7 @@
 // Since ezsocks.c and ezthreads.c already include implementation, we do not need to link
 // Just run: `gcc client.c -o client.exe -lws2_32`
 
+#include "ezcolors.h"
 #define MAX_MSG (100 * 1024) // Do this before including ezsocks if you want to override the default.
 #define EZSOCKS_IMPLEMENTATION
 #define EZTHREADS_IMPLEMENTATION
@@ -14,7 +15,7 @@ static void receiver(void *arg){
     static char msg[MAX_MSG];
 
     while (recv_msg(s, msg, sizeof(msg)) > 0){
-        printf("\rServer: %s\n>>> ", msg);   // \r returns to line start, overwriting ">>> "
+        printf(BRIGHT_GREEN "\rServer: " RESET "%s\n>>> ", msg);   // \r returns to line start, overwriting ">>> "
         fflush(stdout);
     }
 
@@ -52,7 +53,7 @@ int main(void){
             fprintf(stderr, "Send Failed\n");
             break;
         }
-        printf("\x1b[1A\r\x1b[KYou: %s\n", msg);   // up one line, clear it, rewrite
+        printf(CURSOR_UP "\r" CLEAR_LINE BRIGHT_BLUE "You: " RESET "%s\n", msg);   // up one line, clear it, rewrite
         fflush(stdout);
     }
 
