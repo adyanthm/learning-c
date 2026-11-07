@@ -28,12 +28,18 @@ void thread_join(thread_t t);
 /* Let the thread run on its own; you will never join it. */
 void thread_detach(thread_t t);
 
+typedef struct {
+    volatile LONG state;   /* 0 = unlocked, 1 = locked, 2 = locked + someone is sleeping */
+} mutex_t;
+
 #endif
 
 #ifdef EZTHREADS_IMPLEMENTATION
 
 #include <stdlib.h>
-
+#ifndef _WIN32_WINNT
+#define _WIN32_WINNT 0x0602   /* needed for WaitOnAddress (Windows 8+) */
+#endif
 typedef struct {
     void (*fn) (void *);
     void *arg;
@@ -97,6 +103,46 @@ void thread_join(thread_t thread){
 void thread_detach(thread_t thread){
     if (thread != NULL)
         CloseHandle(thread);
+}
+
+/************************************************************************************
+ * Mutexes: only one thread at a time may be between lock and unlock.               *
+ * Used to protect shared data (e.g. the list of connected clients).                *
+ *                                                                                  *
+ * states: 0 = unlocked, 1 = locked, 2 = locked + someone is sleeping on it.        *
+ * Link with -lsynchronization.                                                     *
+ ***********************************************************************************/
+
+void mutex_init(mutex_t *m){
+    m->state = 0;
+}
+
+void mutex_lock(mutex_t *m){
+    if (InterlockedCompareExchange(&m->state, 1, 0) == 0)
+        return; // 0 -> 1 (unlocked -> locked)
+
+    // If the code reaches here, means its locked.
+    while (InterlockedExchange(&m->state, 2) != 0){
+        // Always set state to 2 and look at the OLD value:
+        //   old 0 -> lock was free, we own it now (state is 2, which is fine)
+        //   old 1 or 2 -> still held by someone, go to sleep and retry
+        LONG expected = 2;
+        WaitOnAddress(&m->state, &expected, sizeof(LONG), INFINITE);
+    }
+}
+
+int mutex_trylock(mutex_t *m){
+    return InterlockedCompareExchange(&m->state, 1, 0) == 0;
+}
+
+void mutex_unlock(mutex_t *m){
+    /* Releases and if someone was sleeping (old state 2), wake exactly one of them. */
+    if (InterlockedExchange(&m->state, 0) == 2)
+        WakeByAddressSingle((PVOID)&m->state);
+}
+
+void mutex_destroy(mutex_t *m){
+    (void)m;
 }
 
 #endif
